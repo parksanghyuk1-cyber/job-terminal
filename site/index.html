@@ -214,7 +214,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
         <div id="setup-state"></div>
         <ol>
           <li><a href="https://github.com/settings/personal-access-tokens/new?name=%EC%B1%84%EC%9A%A9%20%ED%84%B0%EB%AF%B8%EB%84%90%20%EB%B2%84%ED%8A%BC&amp;description=jobs%20site%20buttons&amp;target_name=parksanghyuk1-cyber&amp;expires_in=365&amp;actions=write" target="_blank" rel="noopener">GitHub 토큰 만들기 화면 열기 ›</a></li>
-          <li><b>Repository access</b> → <b>Only select repositories</b> → <b>Morning-Briefing</b> 하나만 고르기</li>
+          <li><b>Repository access</b> → <b>Only select repositories</b> → <b>job-terminal</b> 하나만 고르기</li>
           <li><b>Permissions</b> → <b>Actions</b>를 <b>Read and write</b>로 (나머지는 그대로)</li>
           <li><b>Generate token</b> → 나온 토큰(github_pat_…)을 복사해서 아래에 붙여넣기</li>
         </ol>
@@ -237,7 +237,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
 
 <script>
 (() => {
-  const REPO = "parksanghyuk1-cyber/Morning-Briefing";
+  const REPO = "parksanghyuk1-cyber/job-terminal";
   const ACTION_WF = "site_action.yml";
   const $ = (id) => document.getElementById(id);
   const ls = {
@@ -338,7 +338,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     });
     if (r.status === 204) return;
     if (r.status === 401) throw new Error("토큰이 틀렸거나 만료됐어요. 아래 설정에서 다시 넣어 주세요.");
-    if (r.status === 403 || r.status === 404) throw new Error("토큰에 Morning-Briefing 저장소 Actions 쓰기 권한이 없어요.");
+    if (r.status === 403 || r.status === 404) throw new Error("토큰에 job-terminal 저장소 Actions 쓰기 권한이 없어요.");
     throw new Error(`요청 실패 (${r.status})`);
   }
   async function act(action, url, value, label) {
@@ -550,7 +550,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     try {   // 저장소의 버튼용 자동 작업을 볼 수 있는지만 확인 (아무것도 실행하지 않음)
       const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${ACTION_WF}`, { headers: { Authorization: `Bearer ${t}`, Accept: "application/vnd.github+json" } });
       if (r.status === 401) throw new Error("토큰이 맞지 않아요.");
-      if (!r.ok) throw new Error("이 토큰으로는 Morning-Briefing 저장소가 안 보여요. 저장소를 골랐는지 확인해 주세요.");
+      if (!r.ok) throw new Error("이 토큰으로는 job-terminal 저장소가 안 보여요. 저장소를 골랐는지 확인해 주세요.");
       ls.set("jt-gh", t); $("gh-token").value = ""; $("setup").open = false;
       toast("이 기기에서 버튼을 켰어요."); render();
     } catch (e) { toast(e.message, 6000); }
