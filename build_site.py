@@ -1,8 +1,9 @@
 """
 채용 터미널 웹사이트 (GitHub Pages) 데이터 만들기
 - 노션 「📥 채용 알림 검토함」(처리 안 된 것), 「📆 취업 지원 현황」, 「📈 시장 지표」를 읽어서
-- 비밀번호(DASHBOARD_PASSWORD)로 암호화한 _site/data.json 을 만들고, site/index.html 을 _site/ 로 복사한다
-- 사이트는 공개 주소지만, 데이터는 비밀번호를 아는 브라우저에서만 풀린다 (AES-GCM, PBKDF2-SHA256)
+- _site/data.json 을 만들고, site/index.html 을 _site/ 로 복사한다
+- 저장소 비밀값 DASHBOARD_PASSWORD 가 있으면 데이터를 암호화해서 비밀번호를 아는 브라우저에서만 풀리게 하고
+  (AES-GCM, PBKDF2-SHA256), 없으면 그대로 공개한다
 워크플로: .github/workflows/dashboard_site.yml (1시간마다)
 """
 import base64
@@ -106,15 +107,17 @@ def encrypt(payload: dict, password: str) -> dict:
 
 
 def main():
+    # 비밀번호(DASHBOARD_PASSWORD)가 있으면 암호화, 없으면 그대로 공개 (사용자 선택: 2026-10 현재 비밀번호 없이 공개)
     password = os.environ.get("DASHBOARD_PASSWORD", "")
-    if len(password) < 8:
-        raise SystemExit("DASHBOARD_PASSWORD 저장소 비밀값이 없거나 8자보다 짧아요")
+    if password and len(password) < 8:
+        raise SystemExit("DASHBOARD_PASSWORD 가 8자보다 짧아요")
     data = collect()
     os.makedirs(OUT, exist_ok=True)
     shutil.copy("site/index.html", os.path.join(OUT, "index.html"))
     with open(os.path.join(OUT, "data.json"), "w", encoding="utf-8") as f:
-        json.dump(encrypt(data, password), f)
-    print(f"[site] 검토함 {len(data['inbox'])} · 지원 현황 {len(data['tracker'])} · 시장 {len(data['market'])} → {OUT}/")
+        json.dump(encrypt(data, password) if password else {"v": 0, "data": data}, f, ensure_ascii=False)
+    mode = "암호화" if password else "공개"
+    print(f"[site] ({mode}) 검토함 {len(data['inbox'])} · 지원 현황 {len(data['tracker'])} · 시장 {len(data['market'])} → {OUT}/")
 
 
 if __name__ == "__main__":

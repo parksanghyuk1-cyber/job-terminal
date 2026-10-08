@@ -171,7 +171,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
 
     <div class="foot">
       <span>노션 데이터는 1시간마다 새로 받아요. 수정은 노션에서 해 주세요.</span>
-      <span><button type="button" id="reload">다시 불러오기</button> · <button type="button" id="forget">이 기기에서 잠그기</button></span>
+      <span><button type="button" id="reload">다시 불러오기</button><span id="forget-sep"> · </span><button type="button" id="forget">이 기기에서 잠그기</button></span>
     </div>
   </main>
 </div>
@@ -206,8 +206,11 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     blob = await r.json();
   }
   function showLock(msg = "") { $("app").hidden = true; $("lock").hidden = false; $("lock-err").textContent = msg; setTimeout(() => $("pw").focus(), 50); }
+  // 비밀번호 없이 공개된 데이터 ({v:0, data})면 잠금 화면 없이 바로 그린다
+  const plain = () => blob?.v === 0 && blob.data;
   async function start() {
     try { await loadBlob(); } catch (e) { showLock(e.message); return; }
+    if (plain()) { data = blob.data; $("forget").hidden = true; $("forget-sep").hidden = true; render(); return; }
     const saved = store.get();
     if (saved) {
       try { data = await decrypt(b64d(saved)); render(); return; }
@@ -233,7 +236,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
   });
   $("forget").addEventListener("click", () => { store.del(); data = null; showLock("이 기기에서 잠갔어요."); });
   $("reload").addEventListener("click", async () => {
-    try { await loadBlob(); const saved = store.get(); if (saved) { data = await decrypt(b64d(saved)); render(); } else showLock(); }
+    try { await loadBlob(); if (plain()) { data = blob.data; render(); return; } const saved = store.get(); if (saved) { data = await decrypt(b64d(saved)); render(); } else showLock(); }
     catch { showLock("다시 열어 주세요."); }
   });
 
