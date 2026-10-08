@@ -11,9 +11,10 @@ permissions:
   pages: write
   id-token: write
 
+# 배포 도중에 끊으면 Pages 배포가 '진행 중'으로 멈춰 다음 배포가 막힌다 → 끊지 말고 차례로
 concurrency:
   group: dashboard-site
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
