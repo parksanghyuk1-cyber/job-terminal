@@ -10,12 +10,13 @@
 <meta name="apple-mobile-web-app-title" content="채용 터미널">
 <title>채용 터미널</title>
 <style>
-/* 채용 터미널 (웹사이트판) — 휴대폰 먼저. 데이터는 data.json 을 비밀번호로 풀어서 그린다 (build_site.py 와 짝) */
+/* 채용 터미널 (웹사이트판) — 휴대폰 먼저, 한 화면.
+   데이터: data.json (build_site.py 가 1시간마다 노션에서 만듦. 비밀번호를 정하면 암호화됨)
+   버튼(승인·제외·옮기기): 이 기기에 넣은 GitHub 토큰으로 site_action.yml 을 실행 → 노션 반영 → 사이트 다시 만들기 */
 :root {
   --bg: #f2f2f7; --card: #ffffff; --fg: #000000; --fg2: #3c3c43; --muted: #8e8e93;
   --sep: rgba(60, 60, 67, 0.14); --fill: #f2f2f7; --fill2: #e5e5ea;
   --blue: #007aff; --red: #ff3b30; --orange: #ff9500;
-  --up: #e5322d; --down: #1261c4;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
   color-scheme: light;
@@ -24,14 +25,14 @@
   :root {
     --bg: #000000; --card: #1c1c1e; --fg: #ffffff; --fg2: #ebebf5; --muted: #98989f;
     --sep: rgba(84, 84, 88, 0.5); --fill: #2c2c2e; --fill2: #3a3a3c;
-    --blue: #0a84ff; --red: #ff453a; --orange: #ff9f0a; --up: #ff5a52; --down: #4d8eff;
+    --blue: #0a84ff; --red: #ff453a; --orange: #ff9f0a;
     --shadow: none; color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
 a { color: var(--blue); text-decoration: none; }
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .num { font-variant-numeric: tabular-nums; }
@@ -39,55 +40,99 @@ button { cursor: pointer; border: 0; background: none; }
 
 .page { max-width: 1100px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
 
-/* 잠금 화면 */
+/* 잠금 화면 (비밀번호를 정했을 때만) */
 .lock { min-height: 80vh; display: grid; place-items: center; }
 .lock form { width: min(360px, 100%); background: var(--card); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); display: grid; gap: 14px; }
 .lock h1 { margin: 0; font-size: 26px; font-weight: 800; }
 .lock p { margin: 0; color: var(--muted); font-size: 14px; }
-.lock input[type=password] { width: 100%; border: 0; border-radius: 12px; background: var(--fill); padding: 13px 14px; font-size: 17px; }
+.field { width: 100%; border: 0; border-radius: 12px; background: var(--fill); padding: 12px 14px; font-size: 16px; }
 .lock label { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--fg2); }
-.btn { padding: 12px 16px; border-radius: 14px; background: var(--blue); color: #fff; font-weight: 700; font-size: 16px; }
+.btn { padding: 11px 16px; border-radius: 14px; background: var(--blue); color: #fff; font-weight: 700; font-size: 15px; }
+.btn.sub { background: var(--fill); color: var(--blue); }
 .btn[disabled] { opacity: .5; }
 .err { color: var(--red); font-size: 14px; min-height: 1em; }
 
-/* 머리글 + 탭 */
+/* 머리글 */
 .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .top h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
 .top .sub { color: var(--fg2); font-size: 15px; margin-top: 2px; }
 .top .sub b { font-weight: 700; }
-.top .meta { color: var(--muted); font-size: 12.5px; }
+.top .meta { color: var(--muted); font-size: 12.5px; text-align: right; }
+.top .meta .busy { color: var(--orange); font-weight: 600; }
 
-.grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 820px) { .grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .card { background: var(--card); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
 .card h2 { margin: 0 0 10px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .card h2 .c { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); }
 .note { font-size: 13px; color: var(--muted); }
 
+/* 캘린더 */
+.cal-card { container: cal / inline-size; }
+.cal-nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.cal-nav button { width: 32px; height: 32px; border-radius: 50%; color: var(--blue); font-size: 20px; line-height: 1; }
+.cal-nav button:hover { background: var(--fill); }
+.cal-nav .mon { min-width: 84px; text-align: center; font-size: 15px; font-weight: 700; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.cal .wd { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); padding-bottom: 4px; }
+.cal .wd.sun, .day.sun .n { color: var(--red); }
+.day { min-height: 48px; border-radius: 10px; padding: 3px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.day:hover { background: var(--fill); }
+.day.sel { background: var(--fill); }
+.day .n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; font-size: 14px; font-weight: 600; }
+.day.other .n { opacity: .35; }
+.day.today .n { background: var(--fg); color: var(--card); }
+.day .dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+.day .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--fg2); }
+.day .dots i.ib { background: transparent; box-shadow: inset 0 0 0 1px var(--fg2); }
+.day .dots i.done { background: var(--muted); opacity: .5; }
+.day .ev { display: none; width: 100%; font-size: 11px; line-height: 1.3; padding: 0 4px; border-radius: 4px; background: var(--fill); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day .ev.ib { background: transparent; border: 1px dashed var(--fill2); color: var(--muted); }
+.day .ev.done { color: var(--muted); }
+.day .more { display: none; font-size: 10.5px; color: var(--muted); }
+@container cal (min-width: 560px) {
+  .day { min-height: 64px; align-items: stretch; padding: 3px 4px; }
+  .day .n { align-self: flex-start; }
+  .day .dots { display: none; }
+  .day .ev, .day .more { display: block; }
+}
+.cal-list { margin-top: 10px; border-top: 0.5px solid var(--sep); padding-top: 4px; }
+.legend { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--fg2); margin-right: 4px; vertical-align: middle; }
+.legend i.ib { background: transparent; box-shadow: inset 0 0 0 1px var(--fg2); }
+
 /* 목록 줄 */
 .list { display: grid; }
 .row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px 0; border-top: 0.5px solid var(--sep); color: var(--fg); }
 .row:first-child { border-top: 0; }
-.row .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; color: var(--fg); }
 .row .s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s.wait { color: var(--orange); }
 .row .go { font-size: 13px; font-weight: 600; color: var(--blue); white-space: nowrap; }
+.row.pending { opacity: .6; }
 .dd { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 9px; background: var(--fill); color: var(--fg2); white-space: nowrap; min-width: 52px; text-align: center; }
 .dd.hot { background: var(--red); color: #fff; }
 .dd.warm { background: var(--orange); color: #fff; }
 .pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 9px; background: var(--fill); color: var(--fg2); white-space: nowrap; }
 .pill.pass { background: var(--fg); color: var(--card); }
 .pill.fail { background: transparent; color: var(--muted); text-decoration: line-through; }
+.mv { position: relative; display: inline-flex; }
+.mv select { appearance: none; -webkit-appearance: none; border: 0; border-radius: 9px; background: var(--fill); color: var(--fg2); font-size: 13px; font-weight: 600; padding: 5px 22px 5px 9px; max-width: 110px; }
+.mv::after { content: "▾"; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--muted); pointer-events: none; }
 
 /* 새 공고 카드 */
 .post { padding: 12px 0; border-top: 0.5px solid var(--sep); display: grid; gap: 4px; }
 .post:first-child { border-top: 0; }
+.post.pending { opacity: .6; }
 .post .t { display: flex; gap: 8px; align-items: center; }
 .post .t b { font-size: 16px; }
 .post .t .dd { margin-left: auto; }
 .post .s { font-size: 14px; color: var(--fg2); }
 .post .m { font-size: 13px; color: var(--muted); }
 .post .w { font-size: 13px; color: var(--orange); }
-.post .links { display: flex; gap: 14px; font-size: 14px; font-weight: 600; margin-top: 2px; }
+.post .links { display: flex; gap: 14px; font-size: 14px; font-weight: 600; margin-top: 2px; align-items: center; flex-wrap: wrap; }
+.post .acts { display: flex; gap: 8px; margin-left: auto; }
+.post .acts .btn { padding: 7px 14px; font-size: 14px; border-radius: 12px; }
 
 /* 현황 그래프 */
 .hero-n .lb { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -111,8 +156,18 @@ details.grp summary::after { content: "›"; margin-left: 6px; color: var(--mute
 details.grp[open] summary::after { transform: rotate(90deg); }
 details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 600; }
 
+/* 편집 열쇠 설정 */
+.setup { margin-top: 18px; }
+.setup summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--blue); text-align: center; list-style: none; }
+.setup summary::-webkit-details-marker { display: none; }
+.setup .card { margin-top: 10px; display: grid; gap: 10px; font-size: 14px; }
+.setup ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--fg2); }
+.setup .row2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.setup .row2 .field { flex: 1 1 220px; }
+.ok { color: var(--fg2); font-size: 14px; }
 .foot { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; }
 .foot button { color: var(--blue); font-weight: 600; font-size: 13px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--card); padding: 10px 16px; border-radius: 14px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: var(--shadow); z-index: 10; }
 </style>
 </head>
 <body>
@@ -121,7 +176,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     <form id="lock-form" autocomplete="on">
       <h1>채용 터미널</h1>
       <p>비밀번호를 넣으면 노션 지원 현황이 열려요.</p>
-      <input type="password" id="pw" autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호" required>
+      <input class="field" type="password" id="pw" autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호" required>
       <label><input type="checkbox" id="remember" checked> 이 기기에서 기억하기</label>
       <button class="btn" id="unlock" type="submit">열기</button>
       <div class="err" id="lock-err" role="alert"></div>
@@ -134,38 +189,72 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
         <h1>채용 터미널</h1>
         <div class="sub" id="sum"></div>
       </div>
-      <div class="meta" id="built"></div>
+      <div class="meta"><div id="built"></div><div class="busy" id="busy" aria-live="polite"></div></div>
     </header>
-    <!-- 한 화면: 다음 마감 · 새 공고 → 지원 현황(요약 그래프 + 단계별 목록) -->
-    <div class="grid two">
+
+    <div class="grid">
+      <section class="card cal-card" aria-labelledby="h-cal">
+        <h2 id="h-cal">마감 캘린더
+          <span class="cal-nav"><button type="button" id="cal-prev" aria-label="이전 달">‹</button><span class="mon" id="cal-mon"></span><button type="button" id="cal-next" aria-label="다음 달">›</button></span>
+        </h2>
+        <div class="cal" id="cal"></div>
+        <div class="legend"><span><i></i>지원 현황</span><span><i class="ib"></i>새 공고(검토 전)</span></div>
+        <div class="cal-list list" id="cal-list"></div>
+      </section>
       <section class="card"><h2>다음 마감<span class="c" id="next-c"></span></h2><div class="list" id="next"></div></section>
       <section class="card"><h2>새 공고<span class="c" id="inbox-c"></span></h2><div id="inbox"></div>
-        <div class="note" style="margin-top:8px">노션 페이지에서 <b>승인</b>에 체크하면 1시간 안에 지원 현황에 들어가요.</div></section>
+        <div class="note" id="inbox-note" style="margin-top:8px"></div></section>
       <section class="card" id="bstat"></section>
       <section class="card"><h2>지원 현황</h2><div id="groups"></div></section>
     </div>
 
+    <details class="setup" id="setup">
+      <summary id="setup-sum">✎ 이 기기에서 승인·옮기기 버튼 켜기</summary>
+      <div class="card">
+        <div id="setup-state"></div>
+        <ol>
+          <li><a href="https://github.com/settings/personal-access-tokens/new?name=%EC%B1%84%EC%9A%A9%20%ED%84%B0%EB%AF%B8%EB%84%90%20%EB%B2%84%ED%8A%BC&amp;description=jobs%20site%20buttons&amp;target_name=parksanghyuk1-cyber&amp;expires_in=365&amp;actions=write" target="_blank" rel="noopener">GitHub 토큰 만들기 화면 열기 ›</a></li>
+          <li><b>Repository access</b> → <b>Only select repositories</b> → <b>Morning-Briefing</b> 하나만 고르기</li>
+          <li><b>Permissions</b> → <b>Actions</b>를 <b>Read and write</b>로 (나머지는 그대로)</li>
+          <li><b>Generate token</b> → 나온 토큰(github_pat_…)을 복사해서 아래에 붙여넣기</li>
+        </ol>
+        <div class="row2">
+          <input class="field" type="password" id="gh-token" placeholder="github_pat_…" aria-label="GitHub 토큰" autocomplete="off">
+          <button class="btn" type="button" id="gh-save">저장</button>
+          <button class="btn sub" type="button" id="gh-clear">이 기기에서 끄기</button>
+        </div>
+        <div class="note">토큰은 이 기기 브라우저에만 저장돼요. 이 토큰으로는 이 저장소의 자동 작업 실행만 할 수 있어요.</div>
+      </div>
+    </details>
+
     <div class="foot">
-      <span>노션 데이터는 1시간마다 새로 받아요. 수정은 노션에서 해 주세요.</span>
+      <span>노션 내용은 1시간마다, 그리고 버튼을 누를 때마다 새로 받아요.</span>
       <span><button type="button" id="reload">다시 불러오기</button><span id="forget-sep"> · </span><button type="button" id="forget">이 기기에서 잠그기</button></span>
     </div>
   </main>
+  <div class="toast" id="toast" role="status" hidden></div>
 </div>
 
 <script>
 (() => {
+  const REPO = "parksanghyuk1-cyber/Morning-Briefing";
+  const ACTION_WF = "site_action.yml";
   const $ = (id) => document.getElementById(id);
-  const KEY_STORE = "jt-key";
-  const store = {
-    get() { try { return localStorage.getItem(KEY_STORE); } catch { return null; } },
-    set(v) { try { localStorage.setItem(KEY_STORE, v); } catch { /* 기억 못 해도 동작 */ } },
-    del() { try { localStorage.removeItem(KEY_STORE); } catch { /* 무시 */ } },
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* 기억 못 해도 동작 */ } },
+    del(k) { try { localStorage.removeItem(k); } catch { /* 무시 */ } },
   };
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const b64e = (u8) => btoa(String.fromCharCode(...u8));
   let blob = null, data = null;
 
-  // ── 암호 풀기 (build_site.py 와 같은 방식: PBKDF2-SHA256 → AES-GCM) ──
+  function toast(msg, ms = 3500) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.hidden = true; }, ms);
+  }
+
+  // ── 데이터 받기 / (비밀번호를 정했을 때) 풀기 ──
   async function deriveRaw(pw) {
     const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
     const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: b64d(blob.salt), iterations: blob.iter }, base, 256);
@@ -181,40 +270,39 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     if (!r.ok) throw new Error(`데이터를 받지 못했어요 (${r.status})`);
     blob = await r.json();
   }
-  function showLock(msg = "") { $("app").hidden = true; $("lock").hidden = false; $("lock-err").textContent = msg; setTimeout(() => $("pw").focus(), 50); }
-  // 비밀번호 없이 공개된 데이터 ({v:0, data})면 잠금 화면 없이 바로 그린다
   const plain = () => blob?.v === 0 && blob.data;
+  async function openData() {
+    if (plain()) { $("forget").hidden = true; $("forget-sep").hidden = true; return blob.data; }
+    const saved = ls.get("jt-key");
+    if (!saved) return null;
+    try { return await decrypt(b64d(saved)); } catch { ls.del("jt-key"); return null; }
+  }
+  function showLock(msg = "") { $("app").hidden = true; $("lock").hidden = false; $("lock-err").textContent = msg; setTimeout(() => $("pw").focus(), 50); }
   async function start() {
     try { await loadBlob(); } catch (e) { showLock(e.message); return; }
-    if (plain()) { data = blob.data; $("forget").hidden = true; $("forget-sep").hidden = true; render(); return; }
-    const saved = store.get();
-    if (saved) {
-      try { data = await decrypt(b64d(saved)); render(); return; }
-      catch { store.del(); }
-    }
-    showLock();
+    data = await openData();
+    data ? render() : showLock();
+  }
+  async function refreshData(quiet) {
+    try { await loadBlob(); const d = await openData(); if (d) { data = d; render(); } else if (!quiet) showLock(); }
+    catch { if (!quiet) toast("새로 불러오지 못했어요."); }
   }
   $("lock-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const pw = $("pw").value;
-    if (!pw) return;
+    const pw = $("pw").value; if (!pw) return;
     $("unlock").disabled = true; $("lock-err").textContent = "여는 중…";
     try {
       if (!blob) await loadBlob();
       const raw = await deriveRaw(pw);
       data = await decrypt(raw);
-      if ($("remember").checked) store.set(b64e(raw));
-      $("pw").value = ""; $("lock-err").textContent = "";
-      render();
+      if ($("remember").checked) ls.set("jt-key", b64e(raw));
+      $("pw").value = ""; $("lock-err").textContent = ""; render();
     } catch (e) {
       $("lock-err").textContent = e?.name === "OperationError" ? "비밀번호가 맞지 않아요." : (e?.message || "열지 못했어요.");
     } finally { $("unlock").disabled = false; }
   });
-  $("forget").addEventListener("click", () => { store.del(); data = null; showLock("이 기기에서 잠갔어요."); });
-  $("reload").addEventListener("click", async () => {
-    try { await loadBlob(); if (plain()) { data = blob.data; render(); return; } const saved = store.get(); if (saved) { data = await decrypt(b64d(saved)); render(); } else showLock(); }
-    catch { showLock("다시 열어 주세요."); }
-  });
+  $("forget").addEventListener("click", () => { ls.del("jt-key"); data = null; showLock("이 기기에서 잠갔어요."); });
+  $("reload").addEventListener("click", () => refreshData(false));
 
   // ── 시간 ───────────────────────────────
   const kst = (d) => new Date(d.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
@@ -230,11 +318,61 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     const base = short ? `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})` : `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})`;
     return iso.includes("T") ? `${base} ${fmtTime(d)}` : base;
   }
+  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const safe = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
   const link = (u, inner, cls = "") => (safe(u) ? `<a class="${cls}" href="${esc(u)}" target="_blank" rel="noopener">${inner}</a>` : `<span class="${cls}">${inner}</span>`);
+  const pageId = (url) => (String(url).match(/[0-9a-f]{32}/i) || [""])[0];
+
+  // ── 버튼 → GitHub 자동 작업 (이 기기에 토큰이 있을 때만) ──
+  const token = () => ls.get("jt-gh");
+  const canEdit = () => !!token();
+  const PENDING_MS = 12 * 60 * 1000;
+  function pending() { try { return JSON.parse(ls.get("jt-pending") || "{}"); } catch { return {}; } }
+  function setPending(p) { ls.set("jt-pending", JSON.stringify(p)); }
+  async function dispatch(action, url, value = "") {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${ACTION_WF}/dispatches`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+      body: JSON.stringify({ ref: "main", inputs: { action, page_id: pageId(url), value } }),
+    });
+    if (r.status === 204) return;
+    if (r.status === 401) throw new Error("토큰이 틀렸거나 만료됐어요. 아래 설정에서 다시 넣어 주세요.");
+    if (r.status === 403 || r.status === 404) throw new Error("토큰에 Morning-Briefing 저장소 Actions 쓰기 권한이 없어요.");
+    throw new Error(`요청 실패 (${r.status})`);
+  }
+  async function act(action, url, value, label) {
+    const p = pending();
+    p[pageId(url)] = { action, value, label, at: Date.now() };
+    setPending(p); render();
+    try { await dispatch(action, url, value); toast(`${label} — 노션에 반영 중이에요 (1~2분)`); watchPending(); }
+    catch (e) { const q = pending(); delete q[pageId(url)]; setPending(q); render(); toast(e.message, 6000); }
+  }
+  // 반영됐는지: 새 데이터에 결과가 보이면 대기 표시를 지운다
+  function settle() {
+    const p = pending(); let changed = false;
+    const built = new Date(data.builtAt).getTime();
+    for (const [id, x] of Object.entries(p)) {
+      const inInbox = (data.inbox || []).some((r) => pageId(r.url) === id);
+      const tr = (data.tracker || []).find((r) => pageId(r.url) === id);
+      const doneNow = x.action === "move" ? tr && (tr["지원상태"] === x.value || tr["상태"] === x.value) : !inInbox && built > x.at;
+      if (doneNow || Date.now() - x.at > PENDING_MS) { delete p[id]; changed = true; }
+    }
+    if (changed) setPending(p);
+    return p;
+  }
+  let watchTimer = null;
+  function watchPending() {
+    clearInterval(watchTimer);
+    watchTimer = setInterval(async () => {
+      if (!Object.keys(pending()).length) { clearInterval(watchTimer); return; }
+      if (!document.hidden) await refreshData(true);
+    }, 25000);
+  }
 
   // ── 지원 현황 분류 (대시보드와 같은 기준) ──
+  const APPLY = ["지원 전", "서류 작성 중", "지원 완료"];
+  const RESULT_PROG = ["적성 검사", "필기전형", "1차면접", "최종면접"];
   const RESULT_PASS = ["서류합격", "필기합격", "면접합격", "최종합격"];
   const RESULT_FAIL = ["서류탈락", "역검탈락", "필기탈락", "면접탈락", "최종탈락"];
   const REACHED = {
@@ -248,38 +386,100 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     if (s && s !== "지원 전" && s !== "서류제출") return "result";
     return r["지원상태"] === "지원 완료" ? "done" : r["지원상태"] === "서류 작성 중" ? "wip" : "todo";
   }
+  // 옮기기를 눌렀는데 아직 반영 전이면 화면에서는 먼저 옮겨 보여 준다
+  function withPending(tracker, p) {
+    return tracker.map((r) => {
+      const x = p[pageId(r.url)];
+      if (!x || x.action !== "move") return r;
+      const o = { ...r };
+      if (APPLY.includes(x.value)) { o["지원상태"] = x.value; if (x.value !== "지원 완료" && o["상태"] && o["상태"] !== "서류제출") o["상태"] = "지원 전"; }
+      else { o["상태"] = x.value; o["지원상태"] = "지원 완료"; }
+      return o;
+    });
+  }
 
   // ── 그리기 ─────────────────────────────
+  let calMonth = (() => { const d = today0(); d.setDate(1); return d; })();
+  let calSel = dayKey(today0());
   function render() {
     $("lock").hidden = true; $("app").hidden = false;
-    const tracker = data.tracker || [], inbox = data.inbox || [];
+    const p = settle();
+    const nPending = Object.keys(p).length;
+    if (nPending) watchPending();
+    const tracker = withPending(data.tracker || [], p);
+    const inbox = data.inbox || [];
     const upcoming = tracker.filter((r) => { const n = dday(r["마감일"]); return n !== null && n >= 0 && r["지원상태"] !== "지원 완료"; })
       .sort((a, b) => new Date(a["마감일"]) - new Date(b["마감일"]));
     const week = upcoming.filter((r) => dday(r["마감일"]) <= 7).length;
     const wip = tracker.filter((r) => r["지원상태"] === "서류 작성 중").length;
-    $("sum").innerHTML = `새 공고 <b>${inbox.length}</b> · 7일 안에 마감 <b>${week}</b> · 작성 중 <b>${wip}</b>`;
-    const b = new Date(data.builtAt);
-    $("built").textContent = `${b.getMonth() + 1}/${b.getDate()} ${fmtTime(kst(b))} 기준`;
+    const newCount = inbox.filter((r) => !p[pageId(r.url)]).length;
+    $("sum").innerHTML = `새 공고 <b>${newCount}</b> · 7일 안에 마감 <b>${week}</b> · 작성 중 <b>${wip}</b>`;
+    const b = kst(new Date(data.builtAt));
+    $("built").textContent = `${b.getMonth() + 1}/${b.getDate()} ${fmtTime(b)} 기준`;
+    $("busy").textContent = nPending ? `노션에 반영 중 ${nPending}건…` : "";
+
+    renderCal(tracker, inbox, p);
 
     // 다음 마감
     $("next-c").textContent = upcoming.length ? `${upcoming.length}곳` : "";
     $("next").innerHTML = upcoming.slice(0, 12).map((r) => { const n = dday(r["마감일"]); return link(r.url,
-      `<span class="dd ${heat(n)}">${ddLabel(n)}</span><span style="min-width:0"><div class="nm">${esc(r["기업명"])}</div><div class="s">${esc(fmtDate(r["마감일"], true))} · ${esc(r["지원상태"] || "지원 전")}</div></span><span class="go">노션 ›</span>`, "row"); }).join("")
+      `<span class="dd ${heat(n)}">${ddLabel(n)}</span><span style="min-width:0"><span class="nm">${esc(r["기업명"])}</span><span class="s" style="display:block">${esc(fmtDate(r["마감일"], true))} · ${esc(r["지원상태"] || "지원 전")}</span></span><span class="go">노션 ›</span>`, "row"); }).join("")
       || `<div class="note">남은 마감이 없어요.</div>`;
 
     // 새 공고 (검토함)
-    const ib = [...inbox].sort((a, b2) => new Date(a["마감일"] || 8.64e15) - new Date(b2["마감일"] || 8.64e15));
-    $("inbox-c").textContent = ib.length ? `${ib.length}개` : "";
-    $("inbox").innerHTML = ib.map((r) => { const n = dday(r["마감일"]); const meta = [fmtDate(r["마감일"]) + " 마감", ...(r["입사 유형"] ? [].concat(r["입사 유형"]) : []), ...(r["회사규모"] ? [].concat(r["회사규모"]) : [])].join(" · ");
-      return `<div class="post"><div class="t"><b>${esc(r["기업명"])}</b><span class="dd ${heat(n)}">${ddLabel(n)}</span></div>
+    const ib = [...inbox].sort((a, c) => new Date(a["마감일"] || 8.64e15) - new Date(c["마감일"] || 8.64e15));
+    $("inbox-c").textContent = newCount ? `${newCount}개` : "";
+    $("inbox").innerHTML = ib.map((r) => {
+      const n = dday(r["마감일"]), x = p[pageId(r.url)];
+      const meta = [fmtDate(r["마감일"]) + " 마감", ...[].concat(r["입사 유형"] || []), ...[].concat(r["회사규모"] || [])].join(" · ");
+      const acts = x ? `<span class="note" style="margin-left:auto;color:var(--orange)">${esc(x.label)} — 반영 중…</span>`
+        : canEdit() ? `<span class="acts"><button class="btn" type="button" data-act="approve" data-url="${esc(r.url)}" data-name="${esc(r["기업명"])}">승인</button><button class="btn sub" type="button" data-act="skip" data-url="${esc(r.url)}" data-name="${esc(r["기업명"])}">제외</button></span>` : "";
+      return `<div class="post${x ? " pending" : ""}"><div class="t"><b>${esc(r["기업명"])}</b><span class="dd ${heat(n)}">${ddLabel(n)}</span></div>
         <div class="s">${esc(r["공고명"])}</div><div class="m">${esc(meta)}</div>${r["메모"] ? `<div class="w">${esc(r["메모"])}</div>` : ""}
-        <div class="links">${safe(r["링크"]) ? link(r["링크"], "공고 보기 ›") : ""}${link(r.url, "노션에서 승인 ›")}</div></div>`; }).join("")
+        <div class="links">${safe(r["링크"]) ? link(r["링크"], "공고 보기 ›") : ""}${link(r.url, "노션 ›")}${acts}</div></div>`; }).join("")
       || `<div class="note">지금은 새 공고가 없어요.</div>`;
+    $("inbox-note").innerHTML = canEdit()
+      ? "<b>승인</b>하면 전형·근무지까지 채워서 지원 현황에 넣어요 (1~2분)."
+      : "아래 <b>버튼 켜기</b>를 하면 여기서 바로 승인·제외할 수 있어요. 지금은 노션에서 <b>승인</b>에 체크하면 1시간 안에 들어가요.";
 
-    renderBoard(tracker);
+    renderBoard(tracker, p);
+    $("setup-state").innerHTML = canEdit() ? `<div class="ok">✓ 이 기기에서 버튼이 켜져 있어요.</div>` : "";
+    $("setup-sum").textContent = canEdit() ? "✎ 버튼 설정 (켜짐)" : "✎ 이 기기에서 승인·옮기기 버튼 켜기";
   }
 
-  function renderBoard(tracker) {
+  // 캘린더: 지원 현황 마감일(채운 점) + 검토 전 새 공고(빈 점)
+  function renderCal(tracker, inbox, p) {
+    const map = new Map();
+    const add = (iso, ev) => { if (!iso) return; const k = dayKey(kst(new Date(iso))); (map.get(k) || map.set(k, []).get(k)).push(ev); };
+    tracker.forEach((r) => add(r["마감일"], { name: r["기업명"], iso: r["마감일"], url: r.url, cls: r["지원상태"] === "지원 완료" ? "done" : "", st: r["상태"] && r["상태"] !== "지원 전" ? r["상태"] : (r["지원상태"] || "지원 전") }));
+    inbox.forEach((r) => { if (!p[pageId(r.url)]) add(r["마감일"], { name: r["기업명"], iso: r["마감일"], url: r.url, cls: "ib", st: "새 공고" }); });
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    $("cal-mon").textContent = `${y}년 ${m + 1}월`;
+    const start = new Date(y, m, 1 - new Date(y, m, 1).getDay());
+    const todayK = dayKey(today0());
+    let html = [...WD].map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("");
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      if (i >= 35 && d.getMonth() !== m) break;
+      const k = dayKey(d), evs = map.get(k) || [];
+      const cls = ["day", d.getMonth() !== m && "other", d.getDay() === 0 && "sun", k === todayK && "today", k === calSel && "sel"].filter(Boolean).join(" ");
+      html += `<button type="button" class="${cls}" data-day="${k}" aria-label="${d.getMonth() + 1}월 ${d.getDate()}일 마감 ${evs.length}건">
+        <span class="n num">${d.getDate()}</span>
+        <span class="dots">${evs.slice(0, 4).map((e) => `<i class="${e.cls}"></i>`).join("")}</span>
+        ${evs.slice(0, 2).map((e) => `<span class="ev ${e.cls}">${esc(e.name)}</span>`).join("")}${evs.length > 2 ? `<span class="more">+${evs.length - 2}</span>` : ""}</button>`;
+    }
+    $("cal").innerHTML = html;
+    const sel = (map.get(calSel) || []).sort((a, b) => new Date(a.iso) - new Date(b.iso));
+    const [, sm, sd] = calSel.split("-").map(Number);
+    $("cal-list").innerHTML = sel.length
+      ? sel.map((e) => link(e.url, `<span class="pill">${e.iso.includes("T") ? fmtTime(kst(new Date(e.iso))) : "종일"}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><span class="s" style="display:block">${esc(e.st)}</span></span><span class="go">노션 ›</span>`, "row")).join("")
+      : `<div class="note" style="padding-top:8px">${sm}월 ${sd}일에는 마감이 없어요.</div>`;
+  }
+  $("cal").addEventListener("click", (ev) => { const b = ev.target.closest("[data-day]"); if (b) { calSel = b.dataset.day; render(); } });
+  $("cal-prev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); render(); });
+  $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); render(); });
+
+  function renderBoard(tracker, p) {
     const cols = { todo: [], wip: [], done: [], result: [] };
     let expired = 0;
     tracker.forEach((r) => { const c = column(r); if (c === "todo" && (dday(r["마감일"]) ?? 0) < 0) { expired++; return; } cols[c].push(r); });
@@ -305,20 +505,60 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
         : `<li aria-hidden="true" style="display:block"><div class="sep"></div></li>`).join("")}</ul>
       <div class="note" style="margin-top:10px">결과 대기 ${waiting} · 전형 진행 중 ${alive} · 탈락 ${out}</div>`;
 
+    const moveSel = (r) => {
+      const cur = column(r) === "result" ? r["상태"] : (r["지원상태"] || "지원 전");
+      const opt = (o) => `<option value="${esc(o)}"${o === cur ? " disabled" : ""}>${o === cur ? "✓ " : ""}${esc(o)}</option>`;
+      return `<span class="mv"><select data-move data-url="${esc(r.url)}" data-name="${esc(r["기업명"])}" aria-label="${esc(r["기업명"])} 다른 단계로 옮기기">
+        <option value="" selected hidden>옮기기</option><optgroup label="지원">${APPLY.map(opt).join("")}</optgroup>
+        <optgroup label="전형 결과">${[...RESULT_PROG, ...RESULT_PASS, ...RESULT_FAIL].map(opt).join("")}</optgroup></select></span>`;
+    };
     const card = (r, col) => {
-      const n = dday(r["마감일"]);
+      const n = dday(r["마감일"]), x = p[pageId(r.url)];
       const badge = col === "result" ? `<span class="pill ${RESULT_PASS.includes(r["상태"]) ? "pass" : RESULT_FAIL.includes(r["상태"]) ? "fail" : ""}">${esc(r["상태"])}</span>`
         : col === "done" ? `<span class="pill">결과 대기</span>` : `<span class="dd ${heat(n)}">${ddLabel(n)}</span>`;
       const when = col === "done" || col === "result" ? (r["지원일"] ? `${fmtDate(r["지원일"], true)} 지원` : `${fmtDate(r["마감일"], true)} 마감`) : `${fmtDate(r["마감일"], true)} 마감`;
-      return link(r.url, `${badge}<span style="min-width:0"><div class="nm">${esc(r["기업명"])}</div><div class="s">${esc([when, r["1차"] && `1차 ${r["1차"]}`].filter(Boolean).join(" · "))}</div></span><span class="go">›</span>`, "row");
+      const sub = x ? `<span class="s wait" style="display:block">${esc(x.label)} — 반영 중…</span>`
+        : `<span class="s" style="display:block">${esc([when, r["1차"] && `1차 ${r["1차"]}`].filter(Boolean).join(" · "))}</span>`;
+      const right = canEdit() && !x ? moveSel(r) : link(r.url, "›", "go");
+      return `<div class="row${x ? " pending" : ""}">${badge}<span style="min-width:0">${link(r.url, esc(r["기업명"]), "nm")}${sub}</span>${right}</div>`;
     };
-    const defs = [["todo", "지원 전", true], ["wip", "서류 작성 중", true], ["result", "전형 결과", true], ["done", "지원 완료 (결과 대기)", false]];
-    $("groups").innerHTML = defs.map(([k, name, open]) => `<details class="grp"${open && cols[k].length ? " open" : ""}><summary>${name}<span class="c">${cols[k].length}</span></summary>
-      <div class="list">${cols[k].map((r) => card(r, k)).join("") || `<div class="note" style="padding-bottom:10px">비어 있어요</div>`}</div></details>`).join("")
-      + (expired ? `<div class="note" style="margin-top:8px">마감 지난 미지원 ${expired}건은 숨겼어요</div>` : "");
+    const opened = new Set([...document.querySelectorAll("details.grp[open]")].map((d) => d.dataset.k));
+    const first = !document.querySelector("details.grp");
+    const defs = [["todo", "지원 전"], ["wip", "서류 작성 중"], ["result", "전형 결과"], ["done", "지원 완료 (결과 대기)"]];
+    $("groups").innerHTML = defs.map(([k, name]) => {
+      const open = first ? k !== "done" && cols[k].length : opened.has(k);
+      return `<details class="grp" data-k="${k}"${open ? " open" : ""}><summary>${name}<span class="c">${cols[k].length}</span></summary>
+      <div class="list">${cols[k].map((r) => card(r, k)).join("") || `<div class="note" style="padding-bottom:10px">비어 있어요</div>`}</div></details>`;
+    }).join("") + (expired ? `<div class="note" style="margin-top:8px">마감 지난 미지원 ${expired}건은 숨겼어요</div>` : "");
   }
 
-  if (!window.crypto?.subtle) { showLock("이 브라우저에서는 열 수 없어요 (https 주소로 열어 주세요)."); return; }
+  // ── 버튼 ───────────────────────────────
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-act]"); if (!b || !canEdit()) return;
+    const name = b.dataset.name;
+    if (b.dataset.act === "approve") act("approve", b.dataset.url, "", `${name} 승인`);
+    else act("skip", b.dataset.url, "", `${name} 제외`);
+  });
+  document.addEventListener("change", (ev) => {
+    const s = ev.target.closest("[data-move]"); if (!s || !s.value || !canEdit()) return;
+    act("move", s.dataset.url, s.value, `${s.dataset.name} → ${s.value}`);
+  });
+  $("gh-save").addEventListener("click", async () => {
+    const t = $("gh-token").value.trim();
+    if (!/^(github_pat_|ghp_)\w{20,}$/.test(t)) { toast("github_pat_ 로 시작하는 토큰을 붙여넣어 주세요."); return; }
+    $("gh-save").disabled = true;
+    try {   // 저장소의 버튼용 자동 작업을 볼 수 있는지만 확인 (아무것도 실행하지 않음)
+      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${ACTION_WF}`, { headers: { Authorization: `Bearer ${t}`, Accept: "application/vnd.github+json" } });
+      if (r.status === 401) throw new Error("토큰이 맞지 않아요.");
+      if (!r.ok) throw new Error("이 토큰으로는 Morning-Briefing 저장소가 안 보여요. 저장소를 골랐는지 확인해 주세요.");
+      ls.set("jt-gh", t); $("gh-token").value = ""; $("setup").open = false;
+      toast("이 기기에서 버튼을 켰어요."); render();
+    } catch (e) { toast(e.message, 6000); }
+    finally { $("gh-save").disabled = false; }
+  });
+  $("gh-clear").addEventListener("click", () => { ls.del("jt-gh"); toast("이 기기에서 버튼을 껐어요."); render(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && data && Object.keys(pending()).length) refreshData(true); });
+
   start();
 })();
 </script>

@@ -1,0 +1,53 @@
+name: 채용 터미널 웹사이트 버튼 (노션 반영)
+
+# 사이트의 승인·제외·옮기기 버튼이 GitHub API로 실행한다 (실행 권한이 있는 토큰을 넣은 기기에서만)
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: approve | skip | move
+        required: true
+      page_id:
+        description: 노션 페이지 id
+        required: true
+      value:
+        description: move 일 때 옮길 단계
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: write   # 끝나고 사이트 다시 만들기(dashboard_site.yml) 실행용
+
+# 버튼 여러 번 눌러도 차례대로 처리 (중간에 끊기지 않게)
+concurrency:
+  group: site-action
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 의존성 설치
+        run: pip install requests google-genai
+
+      - name: 노션에 반영
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ACTION: ${{ inputs.action }}
+          PAGE_ID: ${{ inputs.page_id }}
+          VALUE: ${{ inputs.value }}
+        run: python site_action.py
+
+      - name: 사이트 다시 만들기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run dashboard_site.yml --ref main
