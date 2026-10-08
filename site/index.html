@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="채용 터미널">
+<title>채용 터미널</title>
+<style>
+/* 채용 터미널 (웹사이트판) — 휴대폰 먼저. 데이터는 data.json 을 비밀번호로 풀어서 그린다 (build_site.py 와 짝) */
+:root {
+  --bg: #f2f2f7; --card: #ffffff; --fg: #000000; --fg2: #3c3c43; --muted: #8e8e93;
+  --sep: rgba(60, 60, 67, 0.14); --fill: #f2f2f7; --fill2: #e5e5ea;
+  --blue: #007aff; --red: #ff3b30; --orange: #ff9500;
+  --up: #e5322d; --down: #1261c4;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --card: #1c1c1e; --fg: #ffffff; --fg2: #ebebf5; --muted: #98989f;
+    --sep: rgba(84, 84, 88, 0.5); --fill: #2c2c2e; --fill2: #3a3a3c;
+    --blue: #0a84ff; --red: #ff453a; --orange: #ff9f0a; --up: #ff5a52; --down: #4d8eff;
+    --shadow: none; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+a { color: var(--blue); text-decoration: none; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+
+/* 잠금 화면 */
+.lock { min-height: 80vh; display: grid; place-items: center; }
+.lock form { width: min(360px, 100%); background: var(--card); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); display: grid; gap: 14px; }
+.lock h1 { margin: 0; font-size: 26px; font-weight: 800; }
+.lock p { margin: 0; color: var(--muted); font-size: 14px; }
+.lock input[type=password] { width: 100%; border: 0; border-radius: 12px; background: var(--fill); padding: 13px 14px; font-size: 17px; }
+.lock label { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--fg2); }
+.btn { padding: 12px 16px; border-radius: 14px; background: var(--blue); color: #fff; font-weight: 700; font-size: 16px; }
+.btn[disabled] { opacity: .5; }
+.err { color: var(--red); font-size: 14px; min-height: 1em; }
+
+/* 머리글 + 탭 */
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.top h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+.top .sub { color: var(--fg2); font-size: 15px; margin-top: 2px; }
+.top .sub b { font-weight: 700; }
+.top .meta { color: var(--muted); font-size: 12.5px; }
+.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 2px; padding: 3px; margin: 0 -2px 14px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+.tabs button { flex: 1; padding: 9px 6px; border-radius: 11px; font-weight: 600; font-size: 15px; color: var(--fg2); }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--card); }
+
+.grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.card { background: var(--card); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { margin: 0 0 10px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.card h2 .c { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+
+/* 목록 줄 */
+.list { display: grid; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px 0; border-top: 0.5px solid var(--sep); color: var(--fg); }
+.row:first-child { border-top: 0; }
+.row .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .go { font-size: 13px; font-weight: 600; color: var(--blue); white-space: nowrap; }
+.dd { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 9px; background: var(--fill); color: var(--fg2); white-space: nowrap; min-width: 52px; text-align: center; }
+.dd.hot { background: var(--red); color: #fff; }
+.dd.warm { background: var(--orange); color: #fff; }
+.pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 9px; background: var(--fill); color: var(--fg2); white-space: nowrap; }
+.pill.pass { background: var(--fg); color: var(--card); }
+.pill.fail { background: transparent; color: var(--muted); text-decoration: line-through; }
+
+/* 새 공고 카드 */
+.post { padding: 12px 0; border-top: 0.5px solid var(--sep); display: grid; gap: 4px; }
+.post:first-child { border-top: 0; }
+.post .t { display: flex; gap: 8px; align-items: center; }
+.post .t b { font-size: 16px; }
+.post .t .dd { margin-left: auto; }
+.post .s { font-size: 14px; color: var(--fg2); }
+.post .m { font-size: 13px; color: var(--muted); }
+.post .w { font-size: 13px; color: var(--orange); }
+.post .links { display: flex; gap: 14px; font-size: 14px; font-weight: 600; margin-top: 2px; }
+
+/* 현황 그래프 */
+.hero-n .lb { font-size: 13px; color: var(--muted); font-weight: 600; }
+.hero-n .v { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.hero-n .v small { font-size: 16px; color: var(--muted); font-weight: 600; margin-left: 2px; }
+.hero-n .s { font-size: 13.5px; color: var(--fg2); }
+.bars { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.bars li { display: grid; grid-template-columns: 70px minmax(0, 1fr) 28px; gap: 10px; align-items: center; font-size: 14px; }
+.bars .k { color: var(--fg2); white-space: nowrap; }
+.bars .bar { height: 10px; background: var(--fill); border-radius: 4px; overflow: hidden; }
+.bars .bar i { display: block; height: 100%; min-width: 2px; background: var(--fg2); border-radius: 0 4px 4px 0; }
+.bars li.zero .bar i { min-width: 0; }
+.bars li.zero .k, .bars li.zero .n { color: var(--muted); }
+.bars .n { text-align: right; font-weight: 700; }
+.bars .sep { height: 1px; background: var(--sep); margin: 2px 0; }
+details.grp { border-top: 0.5px solid var(--sep); }
+details.grp:first-of-type { border-top: 0; }
+details.grp summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 12px 0; font-weight: 700; }
+details.grp summary::-webkit-details-marker { display: none; }
+details.grp summary::after { content: "›"; margin-left: 6px; color: var(--muted); transition: transform .15s; }
+details.grp[open] summary::after { transform: rotate(90deg); }
+details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 600; }
+
+/* 시장 */
+.ai { white-space: pre-wrap; font-size: 14px; line-height: 1.6; max-height: 420px; overflow: auto; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--fill); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.tile .lb { font-size: 12.5px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .v { font-size: 18px; font-weight: 700; }
+.tile .ch { font-size: 13px; font-weight: 600; }
+.tile svg { width: 100%; height: 28px; display: block; margin-top: 4px; }
+.grp-h { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 6px; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+.foot { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; }
+.foot button { color: var(--blue); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <section class="lock" id="lock" hidden>
+    <form id="lock-form" autocomplete="on">
+      <h1>채용 터미널</h1>
+      <p>비밀번호를 넣으면 노션 지원 현황이 열려요.</p>
+      <input type="password" id="pw" autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호" required>
+      <label><input type="checkbox" id="remember" checked> 이 기기에서 기억하기</label>
+      <button class="btn" id="unlock" type="submit">열기</button>
+      <div class="err" id="lock-err" role="alert"></div>
+    </form>
+  </section>
+
+  <main id="app" hidden>
+    <header class="top">
+      <div>
+        <h1>채용 터미널</h1>
+        <div class="sub" id="sum"></div>
+      </div>
+      <div class="meta" id="built"></div>
+    </header>
+    <nav class="tabs" role="tablist" aria-label="화면">
+      <button type="button" role="tab" data-tab="home" aria-selected="true">홈</button>
+      <button type="button" role="tab" data-tab="board" aria-selected="false">지원 현황</button>
+      <button type="button" role="tab" data-tab="market" aria-selected="false">시장</button>
+    </nav>
+
+    <div class="grid two" id="v-home" role="tabpanel">
+      <section class="card"><h2>다음 마감<span class="c" id="next-c"></span></h2><div class="list" id="next"></div></section>
+      <section class="card"><h2>새 공고<span class="c" id="inbox-c"></span></h2><div id="inbox"></div>
+        <div class="note" style="margin-top:8px">노션 페이지에서 <b>승인</b>에 체크하면 1시간 안에 지원 현황에 들어가요.</div></section>
+    </div>
+    <div class="grid" id="v-board" role="tabpanel" hidden>
+      <section class="card" id="bstat"></section>
+      <section class="card" id="groups"></section>
+    </div>
+    <div class="grid" id="v-market" role="tabpanel" hidden>
+      <section class="card"><h2>🤖 AI 브리핑<span class="c" id="mkt-time"></span></h2><div class="ai" id="ai"></div></section>
+      <section class="card"><h2>지표</h2><div class="tiles" id="tiles"></div></section>
+    </div>
+
+    <div class="foot">
+      <span>노션 데이터는 1시간마다 새로 받아요. 수정은 노션에서 해 주세요.</span>
+      <span><button type="button" id="reload">다시 불러오기</button> · <button type="button" id="forget">이 기기에서 잠그기</button></span>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const KEY_STORE = "jt-key";
+  const store = {
+    get() { try { return localStorage.getItem(KEY_STORE); } catch { return null; } },
+    set(v) { try { localStorage.setItem(KEY_STORE, v); } catch { /* 기억 못 해도 동작 */ } },
+    del() { try { localStorage.removeItem(KEY_STORE); } catch { /* 무시 */ } },
+  };
+  const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const b64e = (u8) => btoa(String.fromCharCode(...u8));
+  let blob = null, data = null;
+
+  // ── 암호 풀기 (build_site.py 와 같은 방식: PBKDF2-SHA256 → AES-GCM) ──
+  async function deriveRaw(pw) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: b64d(blob.salt), iterations: blob.iter }, base, 256);
+    return new Uint8Array(bits);
+  }
+  async function decrypt(raw) {
+    const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(blob.iv) }, key, b64d(blob.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  async function loadBlob() {
+    const r = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`데이터를 받지 못했어요 (${r.status})`);
+    blob = await r.json();
+  }
+  function showLock(msg = "") { $("app").hidden = true; $("lock").hidden = false; $("lock-err").textContent = msg; setTimeout(() => $("pw").focus(), 50); }
+  async function start() {
+    try { await loadBlob(); } catch (e) { showLock(e.message); return; }
+    const saved = store.get();
+    if (saved) {
+      try { data = await decrypt(b64d(saved)); render(); return; }
+      catch { store.del(); }
+    }
+    showLock();
+  }
+  $("lock-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const pw = $("pw").value;
+    if (!pw) return;
+    $("unlock").disabled = true; $("lock-err").textContent = "여는 중…";
+    try {
+      if (!blob) await loadBlob();
+      const raw = await deriveRaw(pw);
+      data = await decrypt(raw);
+      if ($("remember").checked) store.set(b64e(raw));
+      $("pw").value = ""; $("lock-err").textContent = "";
+      render();
+    } catch (e) {
+      $("lock-err").textContent = e?.name === "OperationError" ? "비밀번호가 맞지 않아요." : (e?.message || "열지 못했어요.");
+    } finally { $("unlock").disabled = false; }
+  });
+  $("forget").addEventListener("click", () => { store.del(); data = null; showLock("이 기기에서 잠갔어요."); });
+  $("reload").addEventListener("click", async () => {
+    try { await loadBlob(); const saved = store.get(); if (saved) { data = await decrypt(b64d(saved)); render(); } else showLock(); }
+    catch { showLock("다시 열어 주세요."); }
+  });
+
+  // ── 시간 ───────────────────────────────
+  const kst = (d) => new Date(d.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const today0 = () => { const a = kst(new Date()); a.setHours(0, 0, 0, 0); return a; };
+  const dday = (iso) => { if (!iso) return null; const b = kst(new Date(iso)); b.setHours(0, 0, 0, 0); return Math.round((b - today0()) / 86400000); };
+  const ddLabel = (n) => (n === null ? "D-?" : n === 0 ? "D-DAY" : n > 0 ? `D-${n}` : `D+${-n}`);
+  const heat = (n) => (n !== null && n <= 3 ? "hot" : n !== null && n <= 7 ? "warm" : "");
+  const WD = "일월화수목금토";
+  const fmtTime = (d) => `${d.getHours() < 12 ? "오전" : "오후"} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")}`;
+  function fmtDate(iso, short) {
+    if (!iso) return "마감일 미정";
+    const d = kst(new Date(iso));
+    const base = short ? `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})` : `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})`;
+    return iso.includes("T") ? `${base} ${fmtTime(d)}` : base;
+  }
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const safe = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
+  const link = (u, inner, cls = "") => (safe(u) ? `<a class="${cls}" href="${esc(u)}" target="_blank" rel="noopener">${inner}</a>` : `<span class="${cls}">${inner}</span>`);
+
+  // ── 지원 현황 분류 (대시보드와 같은 기준) ──
+  const RESULT_PASS = ["서류합격", "필기합격", "면접합격", "최종합격"];
+  const RESULT_FAIL = ["서류탈락", "역검탈락", "필기탈락", "면접탈락", "최종탈락"];
+  const REACHED = {
+    "서류제출": 0, "지원 전": 0, "서류탈락": 0,
+    "서류합격": 1, "적성 검사": 1, "필기전형": 1, "필기합격": 1, "필기탈락": 1, "역검탈락": 1,
+    "1차면접": 2, "최종면접": 2, "면접합격": 2, "면접탈락": 2, "최종탈락": 2,
+    "최종합격": 3,
+  };
+  function column(r) {
+    const s = r["상태"];
+    if (s && s !== "지원 전" && s !== "서류제출") return "result";
+    return r["지원상태"] === "지원 완료" ? "done" : r["지원상태"] === "서류 작성 중" ? "wip" : "todo";
+  }
+
+  // ── 그리기 ─────────────────────────────
+  function render() {
+    $("lock").hidden = true; $("app").hidden = false;
+    const tracker = data.tracker || [], inbox = data.inbox || [];
+    const upcoming = tracker.filter((r) => { const n = dday(r["마감일"]); return n !== null && n >= 0 && r["지원상태"] !== "지원 완료"; })
+      .sort((a, b) => new Date(a["마감일"]) - new Date(b["마감일"]));
+    const week = upcoming.filter((r) => dday(r["마감일"]) <= 7).length;
+    const wip = tracker.filter((r) => r["지원상태"] === "서류 작성 중").length;
+    $("sum").innerHTML = `새 공고 <b>${inbox.length}</b> · 7일 안에 마감 <b>${week}</b> · 작성 중 <b>${wip}</b>`;
+    const b = new Date(data.builtAt);
+    $("built").textContent = `${b.getMonth() + 1}/${b.getDate()} ${fmtTime(kst(b))} 기준`;
+
+    // 다음 마감
+    $("next-c").textContent = upcoming.length ? `${upcoming.length}곳` : "";
+    $("next").innerHTML = upcoming.slice(0, 12).map((r) => { const n = dday(r["마감일"]); return link(r.url,
+      `<span class="dd ${heat(n)}">${ddLabel(n)}</span><span style="min-width:0"><div class="nm">${esc(r["기업명"])}</div><div class="s">${esc(fmtDate(r["마감일"], true))} · ${esc(r["지원상태"] || "지원 전")}</div></span><span class="go">노션 ›</span>`, "row"); }).join("")
+      || `<div class="note">남은 마감이 없어요.</div>`;
+
+    // 새 공고 (검토함)
+    const ib = [...inbox].sort((a, b2) => new Date(a["마감일"] || 8.64e15) - new Date(b2["마감일"] || 8.64e15));
+    $("inbox-c").textContent = ib.length ? `${ib.length}개` : "";
+    $("inbox").innerHTML = ib.map((r) => { const n = dday(r["마감일"]); const meta = [fmtDate(r["마감일"]) + " 마감", ...(r["입사 유형"] ? [].concat(r["입사 유형"]) : []), ...(r["회사규모"] ? [].concat(r["회사규모"]) : [])].join(" · ");
+      return `<div class="post"><div class="t"><b>${esc(r["기업명"])}</b><span class="dd ${heat(n)}">${ddLabel(n)}</span></div>
+        <div class="s">${esc(r["공고명"])}</div><div class="m">${esc(meta)}</div>${r["메모"] ? `<div class="w">${esc(r["메모"])}</div>` : ""}
+        <div class="links">${safe(r["링크"]) ? link(r["링크"], "공고 보기 ›") : ""}${link(r.url, "노션에서 승인 ›")}</div></div>`; }).join("")
+      || `<div class="note">지금은 새 공고가 없어요.</div>`;
+
+    renderBoard(tracker);
+    renderMarket(data.market || []);
+  }
+
+  function renderBoard(tracker) {
+    const cols = { todo: [], wip: [], done: [], result: [] };
+    let expired = 0;
+    tracker.forEach((r) => { const c = column(r); if (c === "todo" && (dday(r["마감일"]) ?? 0) < 0) { expired++; return; } cols[c].push(r); });
+    const byDl = (a, b) => new Date(a["마감일"] || 0) - new Date(b["마감일"] || 0);
+    const recent = (a, b) => new Date(b["지원일"] || b["마감일"] || 0) - new Date(a["지원일"] || a["마감일"] || 0);
+    cols.todo.sort(byDl); cols.wip.sort(byDl); cols.done.sort(recent); cols.result.sort(recent);
+
+    // 현황 그래프 (지원 → 서류 통과 → 면접 → 최종 합격, 누적)
+    const applied = cols.done.concat(cols.result);
+    const reach = (r) => REACHED[r["상태"]] ?? 0;
+    const docPass = applied.filter((r) => reach(r) >= 1).length;
+    const interview = applied.filter((r) => reach(r) >= 2).length;
+    const final = applied.filter((r) => reach(r) >= 3).length;
+    const out = applied.filter((r) => RESULT_FAIL.includes(r["상태"])).length;
+    const docOut = applied.filter((r) => r["상태"] === "서류탈락").length;
+    const waiting = cols.done.length, alive = applied.length - out - waiting - final;
+    const rows = [["지원 전", cols.todo.length], ["작성 중", cols.wip.length], null, ["지원", applied.length], ["서류 통과", docPass], ["면접", interview], ["최종 합격", final]];
+    const max = Math.max(1, ...rows.filter(Boolean).map((x) => x[1]));
+    const dec = docPass + docOut;
+    $("bstat").innerHTML = `<div class="hero-n"><div class="lb">지금까지 지원한 곳</div><div class="v num">${applied.length}<small>곳</small></div>
+      ${dec ? `<div class="s">서류 통과율 ${Math.round((docPass / dec) * 100)}% (${docPass}/${dec})</div>` : ""}</div>
+      <ul class="bars">${rows.map((x) => x ? `<li class="${x[1] ? "" : "zero"}"><span class="k">${x[0]}</span><span class="bar" role="img" aria-label="${x[0]} ${x[1]}곳"><i style="width:${(x[1] / max) * 100}%"></i></span><span class="n num">${x[1]}</span></li>`
+        : `<li aria-hidden="true" style="display:block"><div class="sep"></div></li>`).join("")}</ul>
+      <div class="note" style="margin-top:10px">결과 대기 ${waiting} · 전형 진행 중 ${alive} · 탈락 ${out}</div>`;
+
+    const card = (r, col) => {
+      const n = dday(r["마감일"]);
+      const badge = col === "result" ? `<span class="pill ${RESULT_PASS.includes(r["상태"]) ? "pass" : RESULT_FAIL.includes(r["상태"]) ? "fail" : ""}">${esc(r["상태"])}</span>`
+        : col === "done" ? `<span class="pill">결과 대기</span>` : `<span class="dd ${heat(n)}">${ddLabel(n)}</span>`;
+      const when = col === "done" || col === "result" ? (r["지원일"] ? `${fmtDate(r["지원일"], true)} 지원` : `${fmtDate(r["마감일"], true)} 마감`) : `${fmtDate(r["마감일"], true)} 마감`;
+      return link(r.url, `${badge}<span style="min-width:0"><div class="nm">${esc(r["기업명"])}</div><div class="s">${esc([when, r["1차"] && `1차 ${r["1차"]}`].filter(Boolean).join(" · "))}</div></span><span class="go">›</span>`, "row");
+    };
+    const defs = [["todo", "지원 전", true], ["wip", "서류 작성 중", true], ["result", "전형 결과", true], ["done", "지원 완료 (결과 대기)", false]];
+    $("groups").innerHTML = defs.map(([k, name, open]) => `<details class="grp"${open && cols[k].length ? " open" : ""}><summary>${name}<span class="c">${cols[k].length}</span></summary>
+      <div class="list">${cols[k].map((r) => card(r, k)).join("") || `<div class="note" style="padding-bottom:10px">비어 있어요</div>`}</div></details>`).join("")
+      + (expired ? `<div class="note" style="margin-top:8px">마감 지난 미지원 ${expired}건은 숨겼어요</div>` : "");
+  }
+
+  // ── 시장 ───────────────────────────────
+  const series = (r) => String(r["추이"] || "").split(",").map(Number).filter(Number.isFinite);
+  function fmtVal(r) {
+    const v = Number(r["값"]); if (!Number.isFinite(v)) return "–";
+    if (r["단위"] === "bp") return `${v.toFixed(3)}%`;
+    const dec = r["그룹"] === "코인" || v >= 10000 ? 0 : v >= 100 ? 2 : 4;
+    return v.toLocaleString("ko-KR", { minimumFractionDigits: Math.min(dec, 2), maximumFractionDigits: dec });
+  }
+  function fmtChg(r) {
+    const c = Number(r["변동"]); if (!Number.isFinite(c)) return { t: "", cls: "flat" };
+    const cls = c > 0 ? "up" : c < 0 ? "down" : "flat", a = c > 0 ? "▲" : c < 0 ? "▼" : "–";
+    return { t: r["단위"] === "bp" ? `${a} ${Math.abs(c).toFixed(1)}bp` : `${a} ${Math.abs(c).toFixed(2)}%`, cls };
+  }
+  function spark(vals) {
+    const v = vals.filter(Number.isFinite); if (v.length < 2) return "";
+    const w = 100, h = 28, min = Math.min(...v), max = Math.max(...v), span = max - min || 1;
+    const d = v.map((x, i) => `${i ? "L" : "M"}${((i / (v.length - 1)) * w).toFixed(1)},${(h - 2 - ((x - min) / span) * (h - 4)).toFixed(1)}`).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  const GROUPS = ["금리", "환율", "지수", "선물", "원자재", "심리", "코인"];
+  function renderMarket(rows) {
+    const ai = rows.find((r) => r["티커"] === "AI");
+    const list = rows.filter((r) => r["티커"] !== "AI").sort((a, b) => (a["순서"] ?? 99) - (b["순서"] ?? 99));
+    const t = rows.find((r) => r["기준시각"]);
+    $("mkt-time").textContent = t ? (() => { const d = kst(new Date(t["기준시각"])); return `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)} 기준`; })() : "";
+    $("ai").textContent = ai?.["메모"] || "코멘트가 아직 없어요.";
+    $("tiles").innerHTML = GROUPS.map((g) => { const gr = list.filter((r) => r["그룹"] === g); if (!gr.length) return "";
+      return `<div class="grp-h">${g}</div>` + gr.map((r) => { const c = fmtChg(r);
+        return `<div class="tile"><div class="lb">${esc(r["지표"])}</div><div class="v num">${fmtVal(r)}</div><div class="ch num ${c.cls}">${c.t}</div><div class="${c.cls}">${spark(series(r))}</div></div>`; }).join(""); }).join("")
+      || `<div class="note">아직 지표가 없어요.</div>`;
+  }
+
+  // ── 탭 ─────────────────────────────────
+  const VIEWS = ["home", "board", "market"];
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]"); if (!b) return;
+    VIEWS.forEach((v) => { $(`v-${v}`).hidden = v !== b.dataset.tab; document.querySelector(`[data-tab="${v}"]`).setAttribute("aria-selected", String(v === b.dataset.tab)); });
+    window.scrollTo({ top: 0 });
+  });
+
+  if (!window.crypto?.subtle) { showLock("이 브라우저에서는 열 수 없어요 (https 주소로 열어 주세요)."); return; }
+  start();
+})();
+</script>
+</body>
+</html>
