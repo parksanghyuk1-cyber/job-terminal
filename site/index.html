@@ -51,14 +51,11 @@ button { cursor: pointer; border: 0; background: none; }
 .err { color: var(--red); font-size: 14px; min-height: 1em; }
 
 /* 머리글 + 탭 */
-.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .top h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
 .top .sub { color: var(--fg2); font-size: 15px; margin-top: 2px; }
 .top .sub b { font-weight: 700; }
 .top .meta { color: var(--muted); font-size: 12.5px; }
-.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 2px; padding: 3px; margin: 0 -2px 14px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
-.tabs button { flex: 1; padding: 9px 6px; border-radius: 11px; font-weight: 600; font-size: 15px; color: var(--fg2); }
-.tabs button[aria-selected="true"] { background: var(--fg); color: var(--card); }
 
 .grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 820px) { .grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -114,16 +111,6 @@ details.grp summary::after { content: "›"; margin-left: 6px; color: var(--mute
 details.grp[open] summary::after { transform: rotate(90deg); }
 details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 600; }
 
-/* 시장 */
-.ai { white-space: pre-wrap; font-size: 14px; line-height: 1.6; max-height: 420px; overflow: auto; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.tile { background: var(--fill); border-radius: 14px; padding: 10px 12px; min-width: 0; }
-.tile .lb { font-size: 12.5px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile .v { font-size: 18px; font-weight: 700; }
-.tile .ch { font-size: 13px; font-weight: 600; }
-.tile svg { width: 100%; height: 28px; display: block; margin-top: 4px; }
-.grp-h { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 6px; }
-.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
 .foot { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; }
 .foot button { color: var(--blue); font-weight: 600; font-size: 13px; }
 </style>
@@ -149,24 +136,13 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
       </div>
       <div class="meta" id="built"></div>
     </header>
-    <nav class="tabs" role="tablist" aria-label="화면">
-      <button type="button" role="tab" data-tab="home" aria-selected="true">홈</button>
-      <button type="button" role="tab" data-tab="board" aria-selected="false">지원 현황</button>
-      <button type="button" role="tab" data-tab="market" aria-selected="false">시장</button>
-    </nav>
-
-    <div class="grid two" id="v-home" role="tabpanel">
+    <!-- 한 화면: 다음 마감 · 새 공고 → 지원 현황(요약 그래프 + 단계별 목록) -->
+    <div class="grid two">
       <section class="card"><h2>다음 마감<span class="c" id="next-c"></span></h2><div class="list" id="next"></div></section>
       <section class="card"><h2>새 공고<span class="c" id="inbox-c"></span></h2><div id="inbox"></div>
         <div class="note" style="margin-top:8px">노션 페이지에서 <b>승인</b>에 체크하면 1시간 안에 지원 현황에 들어가요.</div></section>
-    </div>
-    <div class="grid" id="v-board" role="tabpanel" hidden>
       <section class="card" id="bstat"></section>
-      <section class="card" id="groups"></section>
-    </div>
-    <div class="grid" id="v-market" role="tabpanel" hidden>
-      <section class="card"><h2>🤖 AI 브리핑<span class="c" id="mkt-time"></span></h2><div class="ai" id="ai"></div></section>
-      <section class="card"><h2>지표</h2><div class="tiles" id="tiles"></div></section>
+      <section class="card"><h2>지원 현황</h2><div id="groups"></div></section>
     </div>
 
     <div class="foot">
@@ -301,7 +277,6 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
       || `<div class="note">지금은 새 공고가 없어요.</div>`;
 
     renderBoard(tracker);
-    renderMarket(data.market || []);
   }
 
   function renderBoard(tracker) {
@@ -342,46 +317,6 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
       <div class="list">${cols[k].map((r) => card(r, k)).join("") || `<div class="note" style="padding-bottom:10px">비어 있어요</div>`}</div></details>`).join("")
       + (expired ? `<div class="note" style="margin-top:8px">마감 지난 미지원 ${expired}건은 숨겼어요</div>` : "");
   }
-
-  // ── 시장 ───────────────────────────────
-  const series = (r) => String(r["추이"] || "").split(",").map(Number).filter(Number.isFinite);
-  function fmtVal(r) {
-    const v = Number(r["값"]); if (!Number.isFinite(v)) return "–";
-    if (r["단위"] === "bp") return `${v.toFixed(3)}%`;
-    const dec = r["그룹"] === "코인" || v >= 10000 ? 0 : v >= 100 ? 2 : 4;
-    return v.toLocaleString("ko-KR", { minimumFractionDigits: Math.min(dec, 2), maximumFractionDigits: dec });
-  }
-  function fmtChg(r) {
-    const c = Number(r["변동"]); if (!Number.isFinite(c)) return { t: "", cls: "flat" };
-    const cls = c > 0 ? "up" : c < 0 ? "down" : "flat", a = c > 0 ? "▲" : c < 0 ? "▼" : "–";
-    return { t: r["단위"] === "bp" ? `${a} ${Math.abs(c).toFixed(1)}bp` : `${a} ${Math.abs(c).toFixed(2)}%`, cls };
-  }
-  function spark(vals) {
-    const v = vals.filter(Number.isFinite); if (v.length < 2) return "";
-    const w = 100, h = 28, min = Math.min(...v), max = Math.max(...v), span = max - min || 1;
-    const d = v.map((x, i) => `${i ? "L" : "M"}${((i / (v.length - 1)) * w).toFixed(1)},${(h - 2 - ((x - min) / span) * (h - 4)).toFixed(1)}`).join("");
-    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
-  }
-  const GROUPS = ["금리", "환율", "지수", "선물", "원자재", "심리", "코인"];
-  function renderMarket(rows) {
-    const ai = rows.find((r) => r["티커"] === "AI");
-    const list = rows.filter((r) => r["티커"] !== "AI").sort((a, b) => (a["순서"] ?? 99) - (b["순서"] ?? 99));
-    const t = rows.find((r) => r["기준시각"]);
-    $("mkt-time").textContent = t ? (() => { const d = kst(new Date(t["기준시각"])); return `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)} 기준`; })() : "";
-    $("ai").textContent = ai?.["메모"] || "코멘트가 아직 없어요.";
-    $("tiles").innerHTML = GROUPS.map((g) => { const gr = list.filter((r) => r["그룹"] === g); if (!gr.length) return "";
-      return `<div class="grp-h">${g}</div>` + gr.map((r) => { const c = fmtChg(r);
-        return `<div class="tile"><div class="lb">${esc(r["지표"])}</div><div class="v num">${fmtVal(r)}</div><div class="ch num ${c.cls}">${c.t}</div><div class="${c.cls}">${spark(series(r))}</div></div>`; }).join(""); }).join("")
-      || `<div class="note">아직 지표가 없어요.</div>`;
-  }
-
-  // ── 탭 ─────────────────────────────────
-  const VIEWS = ["home", "board", "market"];
-  document.querySelector(".tabs").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-tab]"); if (!b) return;
-    VIEWS.forEach((v) => { $(`v-${v}`).hidden = v !== b.dataset.tab; document.querySelector(`[data-tab="${v}"]`).setAttribute("aria-selected", String(v === b.dataset.tab)); });
-    window.scrollTo({ top: 0 });
-  });
 
   if (!window.crypto?.subtle) { showLock("이 브라우저에서는 열 수 없어요 (https 주소로 열어 주세요)."); return; }
   start();

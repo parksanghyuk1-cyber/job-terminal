@@ -1,6 +1,6 @@
 """
 채용 터미널 웹사이트 (GitHub Pages) 데이터 만들기
-- 노션 「📥 채용 알림 검토함」(처리 안 된 것), 「📆 취업 지원 현황」, 「📈 시장 지표」를 읽어서
+- 노션 「📥 채용 알림 검토함」(처리 안 된 것), 「📆 취업 지원 현황」을 읽어서
 - _site/data.json 을 만들고, site/index.html 을 _site/ 로 복사한다
 - 저장소 비밀값 DASHBOARD_PASSWORD 가 있으면 데이터를 암호화해서 비밀번호를 아는 브라우저에서만 풀리게 하고
   (AES-GCM, PBKDF2-SHA256), 없으면 그대로 공개한다
@@ -21,7 +21,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 NOTION_API = "https://api.notion.com/v1"
 INBOX_DS = "8095e74e-421b-4db6-a779-a60c6053f455"     # 📥 채용 알림 검토함
 TRACKER_DS = "4b154a4c-9165-82f4-a104-077d95d31780"   # 📆 취업 지원 현황
-MARKET_DS = "f4d5c974-a581-4315-b912-5ae909c5dd62"    # 📈 시장 지표
 
 # 브라우저(site/index.html)와 똑같이 맞춰야 하는 값
 KDF_ITERATIONS = 250_000
@@ -91,10 +90,8 @@ def collect():
                   ["기업명", "공고명", "마감일", "입사 유형", "회사규모", "링크", "메모", "출처"])
     tracker = _rows(_query(TRACKER_DS),
                     ["기업명", "지원상태", "상태", "마감일", "지원일", "1차", "회사규모", "산업군"])
-    market = _rows(_query(MARKET_DS),
-                   ["지표", "티커", "그룹", "값", "변동", "단위", "추이", "순서", "메모", "기준시각"])
     return {"builtAt": datetime.datetime.now(KST).isoformat(timespec="minutes"),
-            "inbox": inbox, "tracker": tracker, "market": market}
+            "inbox": inbox, "tracker": tracker}
 
 
 def encrypt(payload: dict, password: str) -> dict:
@@ -117,7 +114,7 @@ def main():
     with open(os.path.join(OUT, "data.json"), "w", encoding="utf-8") as f:
         json.dump(encrypt(data, password) if password else {"v": 0, "data": data}, f, ensure_ascii=False)
     mode = "암호화" if password else "공개"
-    print(f"[site] ({mode}) 검토함 {len(data['inbox'])} · 지원 현황 {len(data['tracker'])} · 시장 {len(data['market'])} → {OUT}/")
+    print(f"[site] ({mode}) 검토함 {len(data['inbox'])} · 지원 현황 {len(data['tracker'])} → {OUT}/")
 
 
 if __name__ == "__main__":
