@@ -152,7 +152,8 @@ def extract(company, title, size, text):
 공고 원문:
 {text[:14000] or "(원문 없음)"}"""
     try:
-        resp = genai.Client(api_key=key).models.generate_content(
+        client = genai.Client(api_key=key)   # 변수로 잡아 둬야 요청 중에 닫히지 않는다
+        resp = client.models.generate_content(
             model="gemini-2.5-flash", contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1))
         out = json.loads(resp.text)
