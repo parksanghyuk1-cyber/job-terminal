@@ -12,7 +12,7 @@
 <style>
 /* 채용 터미널 (웹사이트판) — 휴대폰 먼저, 한 화면.
    데이터: data.json (build_site.py 가 1시간마다 노션에서 만듦. 비밀번호를 정하면 암호화됨)
-   버튼(승인·제외·옮기기): 이 기기에 넣은 GitHub 토큰으로 site_action.yml 을 실행 → 노션 반영 → 사이트 다시 만들기 */
+   버튼(승인·제외·옮기기·삭제): 이 기기에 넣은 GitHub 토큰으로 site_action.yml 을 실행 → 노션 반영 → 사이트 다시 만들기 */
 :root {
   --bg: #f2f2f7; --card: #ffffff; --fg: #000000; --fg2: #3c3c43; --muted: #8e8e93;
   --sep: rgba(60, 60, 67, 0.14); --fill: #f2f2f7; --fill2: #e5e5ea;
@@ -209,7 +209,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     </div>
 
     <details class="setup" id="setup">
-      <summary id="setup-sum">✎ 이 기기에서 승인·옮기기 버튼 켜기</summary>
+      <summary id="setup-sum">✎ 이 기기에서 승인·옮기기·삭제 버튼 켜기</summary>
       <div class="card">
         <div id="setup-state"></div>
         <ol>
@@ -355,7 +355,9 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     for (const [id, x] of Object.entries(p)) {
       const inInbox = (data.inbox || []).some((r) => pageId(r.url) === id);
       const tr = (data.tracker || []).find((r) => pageId(r.url) === id);
-      const doneNow = x.action === "move" ? tr && (tr["지원상태"] === x.value || tr["상태"] === x.value) : !inInbox && built > x.at;
+      const doneNow = x.action === "move" ? tr && (tr["지원상태"] === x.value || tr["상태"] === x.value)
+        : x.action === "delete" ? !tr && !inInbox && built > x.at
+        : !inInbox && built > x.at;
       if (doneNow || Date.now() - x.at > PENDING_MS) { delete p[id]; changed = true; }
     }
     if (changed) setPending(p);
@@ -444,7 +446,7 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
 
     renderBoard(tracker, p);
     $("setup-state").innerHTML = canEdit() ? `<div class="ok">✓ 이 기기에서 버튼이 켜져 있어요.</div>` : "";
-    $("setup-sum").textContent = canEdit() ? "✎ 버튼 설정 (켜짐)" : "✎ 이 기기에서 승인·옮기기 버튼 켜기";
+    $("setup-sum").textContent = canEdit() ? "✎ 버튼 설정 (켜짐)" : "✎ 이 기기에서 승인·옮기기·삭제 버튼 켜기";
   }
 
   // 캘린더: 지원 현황 마감일(채운 점) + 검토 전 새 공고(빈 점)
@@ -508,9 +510,10 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
     const moveSel = (r) => {
       const cur = column(r) === "result" ? r["상태"] : (r["지원상태"] || "지원 전");
       const opt = (o) => `<option value="${esc(o)}"${o === cur ? " disabled" : ""}>${o === cur ? "✓ " : ""}${esc(o)}</option>`;
-      return `<span class="mv"><select data-move data-url="${esc(r.url)}" data-name="${esc(r["기업명"])}" aria-label="${esc(r["기업명"])} 다른 단계로 옮기기">
+      return `<span class="mv"><select data-move data-url="${esc(r.url)}" data-name="${esc(r["기업명"])}" aria-label="${esc(r["기업명"])} 다른 단계로 옮기기 또는 삭제">
         <option value="" selected hidden>옮기기</option><optgroup label="지원">${APPLY.map(opt).join("")}</optgroup>
-        <optgroup label="전형 결과">${[...RESULT_PROG, ...RESULT_PASS, ...RESULT_FAIL].map(opt).join("")}</optgroup></select></span>`;
+        <optgroup label="전형 결과">${[...RESULT_PROG, ...RESULT_PASS, ...RESULT_FAIL].map(opt).join("")}</optgroup>
+        <optgroup label="기타"><option value="__delete">🗑 공고 삭제…</option></optgroup></select></span>`;
     };
     const card = (r, col) => {
       const n = dday(r["마감일"]), x = p[pageId(r.url)];
@@ -541,6 +544,12 @@ details.grp summary .c { margin-left: auto; font-size: 13px; color: var(--muted)
   });
   document.addEventListener("change", (ev) => {
     const s = ev.target.closest("[data-move]"); if (!s || !s.value || !canEdit()) return;
+    if (s.value === "__delete") {   // 실수 방지: 한 번 더 묻는다 (노션 휴지통으로 가서 30일 안에 되살릴 수 있음)
+      const ok = window.confirm(`「${s.dataset.name}」 공고를 삭제할까요?\n노션 휴지통으로 옮겨지고, 30일 안에는 노션에서 되살릴 수 있어요.`);
+      s.value = "";
+      if (ok) act("delete", s.dataset.url, "", `${s.dataset.name} 삭제`);
+      return;
+    }
     act("move", s.dataset.url, s.value, `${s.dataset.name} → ${s.value}`);
   });
   $("gh-save").addEventListener("click", async () => {

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: approve | skip | move
+        description: approve | skip | move | delete
         required: true
       page_id:
         description: 노션 페이지 id

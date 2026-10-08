@@ -1,12 +1,14 @@
 """
-채용 터미널 웹사이트의 버튼 처리 (승인 · 제외 · 단계 옮기기) → 노션에 반영
-- 사이트(site/index.html)가 GitHub API로 .github/workflows/site_action.yml 을 실행하면서 넘긴 값을 받는다
-  ACTION   approve | skip | move
+채용 터미널 웹사이트의 버튼 처리 (승인 · 제외 · 단계 옮기기 · 삭제) → 노션에 반영
+- 사이트(site/index.html)나 채용 터미널 대시보드(PC 연결 프로그램 경유)가 GitHub API로
+  .github/workflows/site_action.yml 을 실행하면서 넘긴 값을 받는다
+  ACTION   approve | skip | move | delete
   PAGE_ID  노션 페이지 id (검토함 줄 또는 취업 지원 현황 줄)
   VALUE    move 일 때 옮길 단계 (지원 전 · 서류 작성 중 · 지원 완료 · 전형 결과들)
 - approve: 검토함 공고를 「취업 지원 현황」에 등록 (본문=검토함 본문 그대로 복사, 전형·근무지·산업군은 Gemini로 채움) → 검토함 처리=등록됨
 - skip:    검토함 처리=제외
 - move:    지원상태/상태 바꾸기 (채용 터미널 대시보드의 '옮기기'와 같은 규칙)
+- delete:  공고를 노션 휴지통으로 (취업 지원 현황·검토함 줄만)
 """
 import datetime
 import json
@@ -253,6 +255,19 @@ def move(page_id, value):
     print(f"단계 옮김 → {value}")
 
 
+def delete(page_id):
+    """공고 삭제 = 노션 휴지통으로 (30일 안에 노션에서 되살릴 수 있음). 채용 DB 두 곳의 줄만 지운다"""
+    page = _notion("GET", f"/pages/{page_id}")
+    parent = (page.get("parent") or {}).get("data_source_id", "").replace("-", "")
+    if parent not in (TRACKER_DS.replace("-", ""), INBOX_DS.replace("-", "")):
+        raise SystemExit("취업 지원 현황·검토함의 공고만 지울 수 있어요")
+    if page.get("in_trash"):
+        print("이미 휴지통에 있어요")
+        return
+    _notion("PATCH", f"/pages/{page_id}", {"in_trash": True})
+    print(f"휴지통으로: {_plain(page['properties'].get('기업명'))}")
+
+
 def trash_test(page_id):
     """시험용으로 만든 '[테스트] …' 줄만 휴지통으로 (사이트 버튼에는 없음, 수동 실행용)"""
     page = _notion("GET", f"/pages/{page_id}")
@@ -275,6 +290,8 @@ def main():
         skip(page_id)
     elif action == "move":
         move(page_id, os.environ.get("VALUE", "").strip())
+    elif action == "delete":
+        delete(page_id)
     elif action == "trash_test":
         trash_test(page_id)
     else:
