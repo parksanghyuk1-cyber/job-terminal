@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sys
+import time
 
 import requests
 
@@ -151,16 +152,22 @@ def extract(company, title, size, text):
 
 공고 원문:
 {text[:14000] or "(원문 없음)"}"""
-    try:
-        client = genai.Client(api_key=key)   # 변수로 잡아 둬야 요청 중에 닫히지 않는다
-        resp = client.models.generate_content(
-            model="gemini-2.5-flash", contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1))
-        out = json.loads(resp.text)
-        return out if isinstance(out, dict) else {}
-    except Exception as e:
-        print(f"[gemini] 실패: {str(e)[:150]} → 전형·근무지는 비워 둠")
-        return {}
+    client = genai.Client(api_key=key)   # 변수로 잡아 둬야 요청 중에 닫히지 않는다
+    cfg = types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1)
+    last = ""
+    # 붐빌 때(503 등) 잠깐 쉬었다 다시, 그래도 안 되면 가벼운 모델로
+    for model in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+        for wait in (0, 6, 15):
+            time.sleep(wait)
+            try:
+                out = json.loads(client.models.generate_content(model=model, contents=prompt, config=cfg).text)
+                return out if isinstance(out, dict) else {}
+            except Exception as e:
+                last = str(e)[:150]
+                if not re.search(r"\b(429|500|503|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded)\b", last):
+                    break   # 일시적인 오류가 아니면 다음 모델로
+    print(f"[gemini] 실패: {last} → 전형·근무지는 비워 둠")
+    return {}
 
 
 # ── 동작 ─────────────────────────────────────────────────
@@ -246,6 +253,16 @@ def move(page_id, value):
     print(f"단계 옮김 → {value}")
 
 
+def trash_test(page_id):
+    """시험용으로 만든 '[테스트] …' 줄만 휴지통으로 (사이트 버튼에는 없음, 수동 실행용)"""
+    page = _notion("GET", f"/pages/{page_id}")
+    title = _plain(page["properties"].get("기업명"))
+    if not title.startswith("[테스트]"):
+        raise SystemExit(f"'[테스트]'로 시작하는 줄만 지울 수 있어요: {title}")
+    _notion("PATCH", f"/pages/{page_id}", {"in_trash": True})
+    print(f"휴지통으로: {title}")
+
+
 def main():
     action = os.environ.get("ACTION", "").strip()
     raw = os.environ.get("PAGE_ID", "").strip().replace("-", "")
@@ -258,6 +275,8 @@ def main():
         skip(page_id)
     elif action == "move":
         move(page_id, os.environ.get("VALUE", "").strip())
+    elif action == "trash_test":
+        trash_test(page_id)
     else:
         raise SystemExit(f"모르는 동작이에요: {action}")
 
